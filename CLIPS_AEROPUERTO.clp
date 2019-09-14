@@ -31,26 +31,105 @@
 ;; ===========================================================================================================================
 
           ( ACCION INICIAL
-            MAQUINA P6 ANT PARADA
-            RECORRIDO P6
+            MAQUINA P6 ANT DT
             VAGONES
-            VAGON V1 POS P6 ANT PARADO
-            VAGON V2 POS RE ANT PARADO
-            VAGON V3 POS P8 ANT PARADO
+            VAGON V1 POS P6 ANT DT
             MALETAS
-            M 1 O FA D P3
-            M 2 O FA D P5
-            M 3 O P1 D RE
-            M 4 O P6 D RE
+            M 1 O PF D P3
+            M 2 O PF D P5
+            M 3 O P1 D PR
+            M 4 O P6 D PR
             ESTADO
             NIVEL 0 
-            PADRE <f-0> )
+            PADRE <Fact-0> )
 
     )
 
 ;; ===========================================================================================================================
 ;; ===  REGLAS                                                                                                              ==
 ;; ===========================================================================================================================
+
+;; ===========================================================================================================================
+;; ===  RECOGER MALETA LIGERA                                                                                               ==
+;; ===========================================================================================================================
+
+    (defrule RECOGER_MALETA_LIGERA
+
+        ?padre <- ( ACCION ?
+                    MAQUINA  ?localizacion_actual ANT ?localizacion_anterior
+                    VAGONES $?vagon_anterior VAGON V1 POS MA $?vagon_posterior
+                    MALETAS $?maletas_anteriores M ?maleta O ?localizacion_actual D ?destino $?maletas_posteriores
+                    ESTADO
+                    NIVEL ?nivel
+                    $? )
+        ( test ( < ?nivel ?*profundidad* ) )
+
+    =>
+        ( assert ( ACCION +EQUIPA
+                   MAQUINA  ?localizacion_actual ANT ?localizacion_anterior
+                   VAGONES $?vagon_anterior VAGON V1 POS MA $?vagon_posterior
+                   MALETAS $?maletas_anteriores M ?maleta O V1 D ?destino $?maletas_posteriores
+                   ESTADO
+                   NIVEL (+ ?nivel 1)
+                   PADRE ?padre ) )
+        ( bind ?*nodosGenerados* ( + ?*nodosGenerados* 1 ) )
+    )
+
+;; ===========================================================================================================================
+;; ===  DEJAR MALETA LIGERA                                                                                                 ==
+;; ===========================================================================================================================
+
+    (defrule DEJAR_MALETA_LIGERA
+
+        ?padre <- ( ACCION ?
+                    MAQUINA  ?localizacion_actual ANT ?localizacion_anterior
+                    VAGONES $?vagon_anterior VAGON V1 POS MA $?vagon_posterior
+                    MALETAS $?maletas_anteriores M ?maleta O V1 D ?localizacion_actual $?maletas_posteriores
+                    ESTADO
+                    NIVEL ?nivel
+                    $? )
+        ( test ( < ?nivel ?*profundidad* ) )
+    =>
+        ( assert ( ACCION -EQUIPA
+                   MAQUINA  ?localizacion_actual ANT ?localizacion_anterior
+                   VAGONES $?vagon_anterior VAGON V1 POS MA $?vagon_posterior
+                   MALETAS $?maletas_anteriores $?maletas_posteriores
+                   ESTADO
+                   NIVEL (+ ?nivel 1)
+                   PADRE ?padre ) )
+        ( bind ?*nodosGenerados* ( + ?*nodosGenerados* 1 ) )
+        ; ( printout t "SE HA DEJADO  LA MALETA "?maleta " en " ?localizacion_actual crlf )
+    )
+;; ===========================================================================================================================
+;; ===  TERMINAR                                                                                                            ==
+;; ===========================================================================================================================
+
+    (defrule TERMINAR
+
+        ?padre <- ( ACCION $? MALETAS ESTADO NIVEL ?nivel $? )
+;;      maleta <- ( MALETA ?maleta $? )
+
+    =>
+
+        ( printout t "SOLUCION ENCONTRADA EN EL NIVEL " ?nivel crlf )
+        ( printout t "NUMERO DE NODOS EXPANDIDOS O REGLAS DISPARADAS " ?*nodosGenerados* crlf )
+        ( printout t "HECHO OBJETIVO " ?padre crlf )
+        ( halt )
+    )
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 ;; ===========================================================================================================================
 ;; ===  MOVER MAQUINA                                                                                                       ==
@@ -60,16 +139,14 @@
 
         ?padre <- ( ACCION ?
                     MAQUINA ?localizacion_actual ANT ?localizacion_anterior
-                    RECORRIDO $?recorrido
                     VAGONES 
                     $?antes_nivel NIVEL ?nivel $?despues_nivel )
                    ( DESDE ?localizacion_actual $? HASTA ?destino_actual $? )
         ( test ( < ?nivel ?*profundidad* ) )
         ( test ( neq ?localizacion_anterior ?destino_actual ) )
     =>
-        ( assert  ( ACCION MOVER_MAQUINA
+        ( assert  ( ACCION MOVER_M
                     MAQUINA ?destino_actual ANT ?localizacion_actual
-                    RECORRIDO $?recorrido ?destino_actual
                     VAGONES
                     $?antes_nivel NIVEL (+ ?nivel 1) PADRE ?padre ) )
         ( bind ?*nodosGenerados* ( + ?*nodosGenerados* 1 ) )
@@ -106,7 +183,6 @@
 
         ?padre <- ( ACCION ?
                     MAQUINA  ?localizacion_actual ANT ?localizacion_anterior
-                    RECORRIDO $?recorrido
                     VAGONES $?vagon_anterior VAGON ?vagon POS ?localizacion_actual ANT ?desenganchado $?vagon_posterior
                     MALETAS $?maletas
                     ESTADO
@@ -114,20 +190,19 @@
                     $? )
         ( test ( < ?nivel ?*profundidad* ) )
 
-        ( test ( neq ?localizacion_actual ENGANCHADO ) )
+        ( test ( neq ?localizacion_actual MA ) )
 
         ( test ( neq ?localizacion_actual ?desenganchado ) )
 
 
 ;; subsetp devuelve true o false al comparar dos variables multievaluadas, por eso el uso del explode$
 
-        ( test ( not ( subsetp (explode$ "ENGANCHADO") $?vagon_anterior  ) ) )
-        ( test ( not ( subsetp (explode$ "ENGANCHADO") $?vagon_posterior ) ) )
+        ( test ( not ( subsetp (explode$ "MA") $?vagon_anterior  ) ) )
+        ( test ( not ( subsetp (explode$ "MA") $?vagon_posterior ) ) )
     =>
-        ( assert  ( ACCION ENGANCHAR_VAGON
+        ( assert  ( ACCION +_VAGON
                     MAQUINA ?localizacion_actual ANT ?localizacion_anterior
-                    RECORRIDO $?recorrido
-                    VAGONES $?vagon_anterior VAGON ?vagon POS ENGANCHADO ANT ?localizacion_actual $?vagon_posterior
+                    VAGONES $?vagon_anterior VAGON ?vagon POS MA ANT ?localizacion_actual $?vagon_posterior
                     MALETAS $?maletas
                     ESTADO
                     NIVEL (+ ?nivel 1)
@@ -151,20 +226,20 @@
                     ; $? )
         ; ( test ( < ?nivel ?*profundidad* ) )
 
-        ; ( test ( neq ?localizacion_actual ENGANCHADO ) )
+        ; ( test ( neq ?localizacion_actual MA ) )
 
         ; ( test ( neq ?localizacion_actual ?desenganchado ) )
 
 
 ; subsetp devuelve true o false al comparar dos variables multievaluadas, por eso el uso del explode$
 
-        ; ( test ( not ( subsetp (explode$ "ENGANCHADO") $?vagon_anterior  ) ) )
-        ; ( test ( not ( subsetp (explode$ "ENGANCHADO") $?vagon_posterior ) ) )
+        ; ( test ( not ( subsetp (explode$ "MA") $?vagon_anterior  ) ) )
+        ; ( test ( not ( subsetp (explode$ "MA") $?vagon_posterior ) ) )
     ; =>
         ; ( assert  ( ACCION ENGANCHAR_VAGON
                     ; MAQUINA ?localizacion_actual ANT ?localizacion_anterior
                     ; RECORRIDO $?recorrido
-                    ; VAGONES $?vagon_anterior VAGON ?vagon POS ENGANCHADO ANT ?localizacion_actual $?vagon_posterior
+                    ; VAGONES $?vagon_anterior VAGON ?vagon POS MA ANT ?localizacion_actual $?vagon_posterior
                     ; MALETAS $?maletas
                     ; ESTADO
                     ; NIVEL (+ ?nivel 1)
@@ -181,8 +256,7 @@
 
         ?padre <- ( ACCION ?
                     MAQUINA  ?localizacion_actual ANT ?localizacion_anterior
-                    RECORRIDO $?recorrido
-                    VAGONES $?vagon_anterior VAGON ?vagon POS ENGANCHADO ANT ?enganchado $?vagon_posterior
+                    VAGONES $?vagon_anterior VAGON ?vagon POS MA ANT ?enganchado $?vagon_posterior
                     MALETAS $?maletas
                     ESTADO
                     NIVEL ?nivel
@@ -193,9 +267,8 @@
 ;; subsetp devuelve true o false al comparar dos variables multievaluadas, por eso el uso del explode$
         ( test ( not ( subsetp (create$ ?vagon ) $?maletas ) ) )
     =>
-        ( assert ( ACCION DESENGANCHAR_VAGON
+        ( assert ( ACCION -_VAGON
                    MAQUINA  ?localizacion_actual ANT ?localizacion_anterior
-                   RECORRIDO $?recorrido
                    VAGONES $?vagon_anterior VAGON ?vagon POS ?localizacion_actual ANT ?localizacion_actual $?vagon_posterior
                    MALETAS $?maletas
                    ESTADO
@@ -213,7 +286,7 @@
         ; ?padre <- ( ACCION ?
                     ; MAQUINA  ?localizacion_actual ANT ?localizacion_anterior
                     ; RECORRIDO $?recorrido
-                    ; VAGONES $?vagon_anterior VAGON ?vagon POS ENGANCHADO ANT ?enganchado $?vagon_posterior
+                    ; VAGONES $?vagon_anterior VAGON ?vagon POS MA ANT ?enganchado $?vagon_posterior
                     ; MALETAS $?maletas
                     ; ESTADO
                     ; NIVEL ?nivel
@@ -234,23 +307,6 @@
                    ; PADRE ?padre ) )
         ; ( bind ?*nodosGenerados* ( + ?*nodosGenerados* 1 ) )
     ; )
-
-;; ===========================================================================================================================
-;; ===  TERMINAR                                                                                                            ==
-;; ===========================================================================================================================
-
-    (defrule TERMINAR
-
-        ?padre <- ( MAQUINA $? MALETAS ESTADO NIVEL ?nivel $? )
-;;      maleta <- ( MALETA ?maleta $? )
-
-    =>
-
-        ( printout t "SOLUCION ENCONTRADA EN EL NIVEL " ?nivel crlf )
-        ( printout t "NUMERO DE NODOS EXPANDIDOS O REGLAS DISPARADAS " ?*nodosGenerados* crlf )
-        ( printout t "HECHO OBJETIVO " ?padre crlf )
-        ( halt )
-    )
 
 ;; ===========================================================================================================================
 ;; ===  TERMINAR COPIA 201909141507                                                                                         ==
