@@ -1,0 +1,136 @@
+;; ===========================================================================================================================
+;; ===  VARIABLES GLOBALES                                                                                                  ==
+;; ===========================================================================================================================
+
+    ( defglobal  ?*nodosGenerados*         =   0 )
+    ( defglobal  ?*profundidad*            =   50 )
+
+;; ===========================================================================================================================
+;; ===  HECHOS INICIALES                                                                                                    ==
+;; ===========================================================================================================================
+
+;; ===========================================================================================================================
+;; ===  REPRESENTACION DEL AEROPUERTO                                                                                       ==
+;; ===========================================================================================================================
+
+    ( deffacts aeropuerto
+
+          ( DESDE FA HASTA P1 HASTA P2 )
+          ( DESDE P2 HASTA P4 HASTA FA )
+          ( DESDE P4 HASTA P2 HASTA P3 )
+          ( DESDE P3 HASTA P4 HASTA P1 )
+          ( DESDE P1 HASTA P5 HASTA P3 HASTA FA )
+          ( DESDE P5 HASTA P1 HASTA P7 HASTA RE )
+          ( DESDE P7 HASTA P5 HASTA P8 )
+          ( DESDE P8 HASTA P7 HASTA P6 )
+          ( DESDE P6 HASTA P8 HASTA RE )
+          ( DESDE RE HASTA P6 HASTA P5 )
+
+;; ===========================================================================================================================
+;; ===  ESTADO INICIAL                                                                                                      ==
+;; ===========================================================================================================================
+
+          ( ACCION INICIAL
+            MAQUINA P6 ESTABA P10
+            VAGONES
+            VAGON1 P6 P10
+            MALETAS
+            M 1 O FA D P3
+            M 2 O FA D P5
+            M 3 O P1 D RE
+            M 4 O P6 D RE
+            ESTADO
+            NIVEL 0 
+            PADRE <f-0> )
+
+    )
+
+;; ===========================================================================================================================
+;; ===  REGLAS                                                                                                              ==
+;; ===========================================================================================================================
+
+;; ===========================================================================================================================
+;; ===  MOVER MAQUINA                                                                                                       ==
+;; ===========================================================================================================================
+
+    (defrule MOVER_MAQUINA
+
+        ?padre <- ( ACCION ? MAQUINA ?localizacion_actual ESTABA ?localizacion_anterior $?antes_nivel NIVEL ?nivel $?despues_nivel )
+                   ( DESDE ?localizacion_actual $? HASTA ?destino_actual $? )
+        ( test ( < ?nivel ?*profundidad* ) )
+        ( test ( neq ?localizacion_anterior ?destino_actual ) )
+    =>
+        ( assert   ( ACCION MOVER_MAQUINA MAQUINA ?destino_actual ESTABA ?localizacion_actual $?antes_nivel NIVEL (+ ?nivel 1) PADRE ?padre ) )
+        ( bind ?*nodosGenerados* ( + ?*nodosGenerados* 1 ) )
+    )
+
+
+;; ===========================================================================================================================
+;; ===  RECOGER MALETA LIGERA                                                                                               ==
+;; ===========================================================================================================================
+
+    (defrule RECOGER_MALETA_LIGERA
+
+        ?padre <- ( ACCION ?
+                    MAQUINA  ?localizacion_actual ESTABA ?localizacion_anterior
+                    VAGONES $?vagon_anterior VAGON1 ENGANCHADO $?vagon_posterior
+                    MALETAS $?maletas_anteriores M ?maleta O ?localizacion_actual D ?destino $?maletas_posteriores
+                    ESTADO
+                    NIVEL ?nivel
+                    $? )
+        ( test ( < ?nivel ?*profundidad* ) )
+
+    =>
+        ( assert ( ACCION RECOGER_MALETA_LIGERA
+                   MAQUINA  ?localizacion_actual ESTABA ?localizacion_anterior
+                   VAGONES $?vagon_anterior VAGON1 ENGANCHADO $?vagon_posterior
+                   MALETAS $?maletas_anteriores M ?maleta O VAGON1 D ?destino $?maletas_posteriores
+                   ESTADO
+                   NIVEL (+ ?nivel 1)
+                   PADRE ?padre ) )
+        ( bind ?*nodosGenerados* ( + ?*nodosGenerados* 1 ) )
+    )
+
+;; ===========================================================================================================================
+;; ===  DEJAR MALETA LIGERA                                                                                                 ==
+;; ===========================================================================================================================
+
+    (defrule DEJAR_MALETA_LIGERA
+
+        ?padre <- ( ACCION ?
+                    MAQUINA  ?localizacion_actual ESTABA ?localizacion_anterior
+                    VAGONES $?vagon_anterior VAGON1 ENGANCHADO $?vagon_posterior
+                    MALETAS $?maletas_anteriores M ?maleta O VAGON1 D ?localizacion_actual $?maletas_posteriores
+                    ESTADO
+                    NIVEL ?nivel
+                    $? )
+        ( test ( < ?nivel ?*profundidad* ) )
+    =>
+        ( assert ( ACCION DEJAR_MALETA_LIGERA
+                   MAQUINA  ?localizacion_actual ESTABA ?localizacion_anterior
+                   VAGONES $?vagon_anterior VAGON1 ENGANCHADO $?vagon_posterior
+                   MALETAS $?maletas_anteriores $?maletas_posteriores
+                   ESTADO
+                   NIVEL (+ ?nivel 1)
+                   PADRE ?padre ) )
+        ( bind ?*nodosGenerados* ( + ?*nodosGenerados* 1 ) )
+        ; ( printout t "SE HA DEJADO  LA MALETA "?maleta " en " ?localizacion_actual crlf )
+    )
+
+
+;; ===========================================================================================================================
+;; ===  TERMINAR                                                                                                            ==
+;; ===========================================================================================================================
+
+    (defrule TERMINAR
+
+        ?padre <- ( MAQUINA $? MALETAS ESTADO NIVEL ?nivel $? )
+;;      maleta <- ( MALETA ?maleta $? )
+
+    =>
+
+        ( printout t "SOLUCION ENCONTRADA EN EL NIVEL " ?nivel crlf )
+        ( printout t "NUMERO DE NODOS EXPANDIDOS O REGLAS DISPARADAS " ?*nodosGenerados* crlf )
+        ( printout t "HECHO OBJETIVO " ?padre crlf )
+        ( halt )
+    )
