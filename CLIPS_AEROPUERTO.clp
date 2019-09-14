@@ -35,6 +35,8 @@
             RECORRIDO P6
             VAGONES
             VAGON V1 POS P6 ANT PARADO
+            VAGON V2 POS RE ANT PARADO
+            VAGON V3 POS P8 ANT PARADO
             MALETAS
             M 1 O FA D P3
             M 2 O FA D P5
