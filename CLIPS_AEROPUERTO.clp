@@ -1,29 +1,11 @@
 ;; ===========================================================================================================================
-;; ===  PRÁCTICA 1. SISTEMAS INTELIGENTES. 2019-2020 
-;; ===                                                                         ==
+;; ===  PRÁCTICA 1. SISTEMAS INTELIGENTES. 2019-2020                                                                        ==
+;; ===  JOSÉ LEOCADIO REJAS MADRIGAL 3C2                                                                       ==
 ;; ===========================================================================================================================
-;; En los patrones de datos representamos los valores simples entre corchetes {} seguido de la letra s minúscula
-;;
-;;
-;;
-;;
-;;
-;;
-;;
-;;
-;;
-;;
-;;
-;;
-;;
-;;
-;;
-;;
-;;
-;;
-;;
-;;
-;;
+
+;; En los patrones de datos representamos los valores simples entre llaves {} seguidos de la letra s minúscula y los valores
+;; múltiples entre llaves seguidos de una letra m minúscula.
+
 ;; ===========================================================================================================================
 ;; ===  VARIABLES GLOBALES                                                                                                  ==
 ;; ===========================================================================================================================
@@ -34,9 +16,6 @@
 ;; ===========================================================================================================================
 ;; ===  HECHOS INICIALES                                                                                                    ==
 ;; ===========================================================================================================================
-
-;; En los patrones de datos representamos los valores simples entre llaves {} seguidos de la letra s minúscula y los valores
-;; múltiples entre llaves seguidos de una letra m minúscula.
 
 ;; ===========================================================================================================================
 ;; ===  REPRESENTACION DEL AEROPUERTO                                                                                       ==
@@ -61,7 +40,7 @@
 
 ;; Aquí se representan las maletas y sus pesos:
 
-;;                          ( M {id}s {P {peso}s}m )
+;;                          {( M {id}s P {peso}s )}m
 
         ( M 1 P 12 )
         ( M 2 P 18 )
@@ -110,8 +89,8 @@
 ;; ===  MOVER MAQUINA                                                                                                       ==
 ;; ===========================================================================================================================
 
-;; Regla para mover la maquina por el aeropuerto. Se realiza un test para que evitar ciclos en el movimiento. Por ejemplo, si 
-;; la máquina está en P6 y se mueve a P8, esta regla evita que vuelva a P6 desde P8.
+;; Regla para mover la maquina por el aeropuerto. Se realiza un test para evitar ciclos en el movimiento. Por ejemplo, si la m
+;; áquina está en P6 y se mueve a P8, esta regla evita que vuelva a P6 desde P8.
 
     (defrule MOVER_MAQUINA
 
@@ -172,9 +151,9 @@
 ;; ===  DESENGANCHAR VAGON                                                                                                  ==
 ;; ===========================================================================================================================
 
-;; Esta regla funciona practicamente igual que al anterior pero aquí la acción que realizar es la de desenganchar un vagón. Ta
-;; mbién realiza un test para evitar ejecutarla inmediatamente después de haber enganchado el vagón por la misma razón que la
-;; regla anterior.
+;; Esta regla funciona practicamente igual que la anterior pero aquí la acción que realiza es la de desenganchar un vagón. Tam
+;; bién realiza un test para evitar ejecutarla inmediatamente después de haber enganchado el vagón por la misma razón que la r
+;; egla anterior.
 
     (defrule DESENGANCHAR_VAGON
 
@@ -205,8 +184,8 @@
 ;; ===  RECOGER MALETA LIGERA                                                                                               ==
 ;; ===========================================================================================================================
 
-;; Esta regla recoge una maleta que no sobrepase el peso máximo para considerarla ligera si el vagón apropiado se encuentra en
-;; ganchado a la máquina y ésta se encuentra en la misma localización que la maleta.
+;; Esta regla recoge una maleta que no sobrepase el peso máximo, para considerarla ligera, si el vagón apropiado se encuentra
+;; enganchado a la máquina y ésta se encuentra en la misma localización que la maleta.
 
     (defrule RECOGER_MALETA_LIGERA
 
@@ -240,8 +219,8 @@
 ;; ===  DEJAR MALETA LIGERA                                                                                                 ==
 ;; ===========================================================================================================================
 
-;; Esta regla deja ua maleta ligera en su destino si la maleta está cargada en el vagón apropiado y este se encuentra en la po
-;; sición de entrega de la maleta seleccionada.
+;; Esta regla deja una maleta ligera en su destino si la maleta está cargada en el vagón apropiado y este se encuentra en la p
+;; osición de entrega de la maleta seleccionada.
 
     (defrule DEJAR_MALETA_LIGERA
 
@@ -268,6 +247,10 @@
 ;; ===========================================================================================================================
 ;; ===  RECOGER MALETA PESADA                                                                                               ==
 ;; ===========================================================================================================================
+
+;; Esta regla recoge una maleta que SI sobrepase el peso máximo, para considerarla pesada, si el vagón apropiado se encuentra
+;; enganchado a la máquina y ésta se encuentra en la misma localización que la maleta. Es practicamente igual a la regla RECOG
+;; ER_MALETA_LIGERA excepto el test para saber el peso de la maleta y el tipo de vagón.
 
     (defrule RECOGER_MALETA_PESADA
 
@@ -301,6 +284,10 @@
 ;; ===  DEJAR MALETA PESADA                                                                                                 ==
 ;; ===========================================================================================================================
 
+;; Esta regla deja una maleta pesada en su destino si la maleta está cargada en el vagón apropiado y este se encuentra en la p
+;; osición de entrega de la maleta seleccionada. Es practicamente igual a la regla DEJAR_MALETA_LIGERA, solo cambia que se apl
+;; ica cuando está enganchado el vagón V2.
+
     (defrule DEJAR_MALETA_PESADA
 
         ?padre <- ( ACCION ?
@@ -326,6 +313,8 @@
 ;; ===========================================================================================================================
 ;; ===  TERMINAR                                                                                                            ==
 ;; ===========================================================================================================================
+
+;; La ejecución termina cuando no quedan más maletas para transportar.
 
     (defrule TERMINAR
 
