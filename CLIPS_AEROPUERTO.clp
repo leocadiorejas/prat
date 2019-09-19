@@ -42,16 +42,20 @@
 
 ;;                          {( M {id}s P {peso}s )}m
 
-        ( M 1 P 12 )
-        ( M 2 P 18 )
-        ( M 3 P 20 )
-        ( M 4 P 14 )
+        ( M 1 P 12 O PF D P3 )
+        ( M 2 P 18 O PF D P5 )
+        ( M 3 P 20 O P1 D PR )
+        ( M 4 P 14 O P6 D PR )
 
 ;; Aquí se representa el peso máximo de las maletas "ligeras":
 
 ;;                          ( PESO_MAXIMO {peso}s )
 
         ( PESO_MAXIMO 15 )
+
+
+        ( VAGON V1  1 15 )
+        ( VAGON V2 16 23 )
 
 ;; ===========================================================================================================================
 ;; ===  ESTADO INICIAL                                                                                                      ==
@@ -62,7 +66,7 @@
 ;;      ( ACCION {accion}s
 ;;        MAQUINA {posicion_actual}s ANT {posicion_anterior}s
 ;;        VAGONES {VAGON {id}s POS {posicion_actual}s ANT {posicion_ultima_accion}s}m
-;;        MALETAS {M {id}s O {origen}s D {destino}s}m
+;;        MALETAS {M {id}s L {localizacion}s}m | localizacion { V1, V2 }
 ;;        ESTADO NIVEL {nivel}s PADRE {id_antecesor_directo}s )
 
         ( ACCION INICIAL
@@ -71,10 +75,10 @@
           VAGON V1 POS P6 ANT DT
           VAGON V2 POS P2 ANT DT
           MALETAS
-          M 1 O PF D P3
-          M 2 O PF D P5
-          M 3 O P1 D PR
-          M 4 O P6 D PR
+          M 1 C NO
+          M 2 C NO
+          M 3 C NO
+          M 4 C NO
           ESTADO
           NIVEL 0 
           PADRE <Fact-0> )
@@ -181,34 +185,39 @@
     )
 
 ;; ===========================================================================================================================
-;; ===  RECOGER MALETA LIGERA                                                                                               ==
+;; ===  RECOGER MALETA                                                                                               ==
 ;; ===========================================================================================================================
 
 ;; Esta regla recoge una maleta que no sobrepase el peso máximo, para considerarla ligera, si el vagón apropiado se encuentra
 ;; enganchado a la máquina y ésta se encuentra en la misma localización que la maleta.
 
-    (defrule RECOGER_MALETA_LIGERA
+    (defrule RECOGER_MALETA
 
         ?padre <- ( ACCION ?
                     MAQUINA  ?localizacion_actual ANT ?localizacion_anterior
-                    VAGONES $?vagon_anterior VAGON V1 POS MA $?vagon_posterior
-                    MALETAS $?maletas_anteriores M ?maleta O ?localizacion_actual D ?destino $?maletas_posteriores
+                    VAGONES $?vagon_anterior VAGON ?vagon POS MA $?vagon_posterior
+                    MALETAS $?maletas_anteriores M ?maleta C NO $?maletas_posteriores
                     ESTADO
                     NIVEL ?nivel
                     $? )
+
+        ;; Comprobación nivel profundidad maximo
         ( test ( < ?nivel ?*profundidad* ) )
 
-        ( M ?maleta P ?peso_maleta )
+        ;; Seleccion de vagon
+        ( VAGON ?vagon ?peso_minimo ?peso_maximo )
 
-        ( PESO_MAXIMO ?peso_maximo )
+        ;; Seleccion de maleta en la misma localizacion que la maquina
+        ( M ?maleta P ?peso_maleta O ?localizacion_actual D ?destino )
 
-        ( test ( <= ?peso_maleta ?peso_maximo ) )
+        ;; Comprobacion para saber si peso maleta esta en los limites impuestos por el vagon seleccionado
+        (test ( and ( >= ?peso_maleta ?peso_minimo ) ( <= ?peso_maleta ?peso_maximo ) ) )
 
     =>
         ( assert ( ACCION +EQUIPL
                    MAQUINA  ?localizacion_actual ANT ?localizacion_anterior
-                   VAGONES $?vagon_anterior VAGON V1 POS MA $?vagon_posterior
-                   MALETAS $?maletas_anteriores M ?maleta O V1 D ?destino $?maletas_posteriores
+                   VAGONES $?vagon_anterior VAGON ?vagon POS MA $?vagon_posterior
+                   MALETAS $?maletas_anteriores M ?maleta C ?vagon $?maletas_posteriores
                    ESTADO
                    NIVEL (+ ?nivel 1)
                    PADRE ?padre ) )
@@ -216,92 +225,28 @@
     )
 
 ;; ===========================================================================================================================
-;; ===  DEJAR MALETA LIGERA                                                                                                 ==
+;; ===  DEJAR MALETA                                                                                                 ==
 ;; ===========================================================================================================================
 
 ;; Esta regla deja una maleta ligera en su destino si la maleta está cargada en el vagón apropiado y este se encuentra en la p
 ;; osición de entrega de la maleta seleccionada.
 
-    (defrule DEJAR_MALETA_LIGERA
+    (defrule DEJAR_MALETA
 
         ?padre <- ( ACCION ?
                     MAQUINA  ?localizacion_actual ANT ?localizacion_anterior
-                    VAGONES $?vagon_anterior VAGON V1 POS MA $?vagon_posterior
-                    MALETAS $?maletas_anteriores M ?maleta O V1 D ?localizacion_actual $?maletas_posteriores
+                    VAGONES $?vagon_anterior VAGON ?vagon POS MA $?vagon_posterior
+                    MALETAS $?maletas_anteriores M ?maleta C ?vagon $?maletas_posteriores
                     ESTADO
                     NIVEL ?nivel
                     $? )
         ( test ( < ?nivel ?*profundidad* ) )
+
+        ( M ?maleta $? D ?localizacion_actual )
     =>
         ( assert ( ACCION -EQUIPL
                    MAQUINA  ?localizacion_actual ANT ?localizacion_anterior
-                   VAGONES $?vagon_anterior VAGON V1 POS MA $?vagon_posterior
-                   MALETAS $?maletas_anteriores $?maletas_posteriores
-                   ESTADO
-                   NIVEL (+ ?nivel 1)
-                   PADRE ?padre ) )
-        ( bind ?*nodosGenerados* ( + ?*nodosGenerados* 1 ) )
-        ; ( printout t "SE HA DEJADO  LA MALETA "?maleta " en " ?localizacion_actual crlf )
-    )
-
-;; ===========================================================================================================================
-;; ===  RECOGER MALETA PESADA                                                                                               ==
-;; ===========================================================================================================================
-
-;; Esta regla recoge una maleta que SI sobrepase el peso máximo, para considerarla pesada, si el vagón apropiado se encuentra
-;; enganchado a la máquina y ésta se encuentra en la misma localización que la maleta. Es practicamente igual a la regla RECOG
-;; ER_MALETA_LIGERA excepto el test para saber el peso de la maleta y el tipo de vagón.
-
-    (defrule RECOGER_MALETA_PESADA
-
-        ?padre <- ( ACCION ?
-                    MAQUINA  ?localizacion_actual ANT ?localizacion_anterior
-                    VAGONES $?vagon_anterior VAGON V2 POS MA $?vagon_posterior
-                    MALETAS $?maletas_anteriores M ?maleta O ?localizacion_actual D ?destino $?maletas_posteriores
-                    ESTADO
-                    NIVEL ?nivel
-                    $? )
-        ( test ( < ?nivel ?*profundidad* ) )
-
-        ( M ?maleta P ?peso_maleta )
-
-        ( PESO_MAXIMO ?peso_maximo )
-
-        ( test ( >  ?peso_maleta ?peso_maximo ) )
-
-    =>
-        ( assert ( ACCION +EQUIPL
-                   MAQUINA  ?localizacion_actual ANT ?localizacion_anterior
-                   VAGONES $?vagon_anterior VAGON V2 POS MA $?vagon_posterior
-                   MALETAS $?maletas_anteriores M ?maleta O V2 D ?destino $?maletas_posteriores
-                   ESTADO
-                   NIVEL (+ ?nivel 1)
-                   PADRE ?padre ) )
-        ( bind ?*nodosGenerados* ( + ?*nodosGenerados* 1 ) )
-    )
-
-;; ===========================================================================================================================
-;; ===  DEJAR MALETA PESADA                                                                                                 ==
-;; ===========================================================================================================================
-
-;; Esta regla deja una maleta pesada en su destino si la maleta está cargada en el vagón apropiado y este se encuentra en la p
-;; osición de entrega de la maleta seleccionada. Es practicamente igual a la regla DEJAR_MALETA_LIGERA, solo cambia que se apl
-;; ica cuando está enganchado el vagón V2.
-
-    (defrule DEJAR_MALETA_PESADA
-
-        ?padre <- ( ACCION ?
-                    MAQUINA  ?localizacion_actual ANT ?localizacion_anterior
-                    VAGONES $?vagon_anterior VAGON V2 POS MA $?vagon_posterior
-                    MALETAS $?maletas_anteriores M ?maleta O V2 D ?localizacion_actual $?maletas_posteriores
-                    ESTADO
-                    NIVEL ?nivel
-                    $? )
-        ( test ( < ?nivel ?*profundidad* ) )
-    =>
-        ( assert ( ACCION -EQUIPL
-                   MAQUINA  ?localizacion_actual ANT ?localizacion_anterior
-                   VAGONES $?vagon_anterior VAGON V2 POS MA $?vagon_posterior
+                   VAGONES $?vagon_anterior VAGON ?vagon POS MA $?vagon_posterior
                    MALETAS $?maletas_anteriores $?maletas_posteriores
                    ESTADO
                    NIVEL (+ ?nivel 1)
