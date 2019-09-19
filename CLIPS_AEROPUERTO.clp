@@ -1,6 +1,6 @@
 ;; ===========================================================================================================================
 ;; ===  PRÁCTICA 1. SISTEMAS INTELIGENTES. 2019-2020                                                                        ==
-;; ===  JOSÉ LEOCADIO REJAS MADRIGAL 3C2                                                                       ==
+;; ===  JOSÉ LEOCADIO REJAS MADRIGAL 3C2                                                                                    ==
 ;; ===========================================================================================================================
 
 ;; En los patrones de datos representamos los valores simples entre llaves {} seguidos de la letra s minúscula y los valores
@@ -47,12 +47,9 @@
         ( M 3 P 20 O P1 D PR )
         ( M 4 P 14 O P6 D PR )
 
-;; Aquí se representa el peso máximo de las maletas "ligeras":
+;; Aquí se representan los vagones con su rango de capacidad:
 
-;;                          ( PESO_MAXIMO {peso}s )
-
-        ( PESO_MAXIMO 15 )
-
+;;                          ( {VAGON {id}s {peso_minimo}s {peso_maximo}s}}m )
 
         ( VAGON V1  1 15 )
         ( VAGON V2 16 23 )
@@ -66,7 +63,7 @@
 ;;      ( ACCION {accion}s
 ;;        MAQUINA {posicion_actual}s ANT {posicion_anterior}s
 ;;        VAGONES {VAGON {id}s POS {posicion_actual}s ANT {posicion_ultima_accion}s}m
-;;        MALETAS {M {id}s L {localizacion}s}m | localizacion { V1, V2 }
+;;        MALETAS {M {id}s C {cargado}s}m | cargado (NO, {vagon})
 ;;        ESTADO NIVEL {nivel}s PADRE {id_antecesor_directo}s )
 
         ( ACCION INICIAL
@@ -185,11 +182,11 @@
     )
 
 ;; ===========================================================================================================================
-;; ===  RECOGER MALETA                                                                                               ==
+;; ===  RECOGER MALETA                                                                                                      ==
 ;; ===========================================================================================================================
 
-;; Esta regla recoge una maleta que no sobrepase el peso máximo, para considerarla ligera, si el vagón apropiado se encuentra
-;; enganchado a la máquina y ésta se encuentra en la misma localización que la maleta.
+;; Esta regla recoge una maleta cuyo peso se encuentre en los limites de capacidad del vagon apropiado si se encuentra enganch
+;; ado a la máquina y ésta se encuentra en la misma localización que la maleta.
 
     (defrule RECOGER_MALETA
 
@@ -225,11 +222,11 @@
     )
 
 ;; ===========================================================================================================================
-;; ===  DEJAR MALETA                                                                                                 ==
+;; ===  DEJAR MALETA                                                                                                        ==
 ;; ===========================================================================================================================
 
-;; Esta regla deja una maleta ligera en su destino si la maleta está cargada en el vagón apropiado y este se encuentra en la p
-;; osición de entrega de la maleta seleccionada.
+;; Esta regla deja una maleta en su destino si la maleta está cargada en el vagón apropiado y este se encuentra en la posición
+;; de entrega de la maleta seleccionada.
 
     (defrule DEJAR_MALETA
 
