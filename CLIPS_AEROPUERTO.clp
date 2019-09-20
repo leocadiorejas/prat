@@ -94,6 +94,8 @@
 ;; áquina está en P6 y se mueve a P8, esta regla evita que vuelva a P6 desde P8.
 
     (defrule MOVER_MAQUINA
+	
+		(declare (salience 500))
 
         ?padre <- ( ACCION ?
                     MAQUINA ?localizacion_actual ANT ?localizacion_anterior
@@ -118,6 +120,8 @@
 ;; después de desenganchar el vagón para así evitar ciclos.
 
     (defrule ENGANCHAR_VAGON
+
+		(declare (salience 700))
 
         ?padre <- ( ACCION ?
                     MAQUINA  ?localizacion_actual ANT ?localizacion_anterior
@@ -158,6 +162,8 @@
 
     (defrule DESENGANCHAR_VAGON
 
+		(declare (salience 600))
+
         ?padre <- ( ACCION ?
                     MAQUINA  ?localizacion_actual ANT ?localizacion_anterior
                     VAGONES $?vagon_anterior VAGON ?vagon POS MA ANT ?enganchado $?vagon_posterior
@@ -189,6 +195,8 @@
 ;; ado a la máquina y ésta se encuentra en la misma localización que la maleta.
 
     (defrule RECOGER_MALETA
+	
+		(declare (salience 900))
 
         ?padre <- ( ACCION ?
                     MAQUINA  ?localizacion_actual ANT ?localizacion_anterior
@@ -229,6 +237,8 @@
 ;; de entrega de la maleta seleccionada.
 
     (defrule DEJAR_MALETA
+	
+		(declare (salience 800))
 
         ?padre <- ( ACCION ?
                     MAQUINA  ?localizacion_actual ANT ?localizacion_anterior
@@ -259,9 +269,12 @@
 ;; La ejecución termina cuando no quedan más maletas para transportar.
 
     (defrule TERMINAR
+	
+		(declare (salience 1000))
 
-        ?padre <- ( ACCION $? MALETAS ESTADO NIVEL ?nivel $? )
-;;      maleta <- ( MALETA ?maleta $? )
+        ?padre <- ( ACCION $? VAGONES $?vagones MALETAS ESTADO NIVEL ?nivel $? )
+;; subsetp devuelve true o false al comparar dos variables multievaluadas, por eso el uso del explode$
+        ( test ( not ( subsetp (create$ MA ) $?vagones ) ) )
 
     =>
 
