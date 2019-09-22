@@ -31,12 +31,12 @@
         ( DESDE P2 HASTA P4 HASTA PF )
         ( DESDE P4 HASTA P2 HASTA P3 )
         ( DESDE P3 HASTA P4 HASTA P1 )
-        ( DESDE P1 HASTA P5 HASTA P3 HASTA PF )
-        ( DESDE P5 HASTA P1 HASTA P7 HASTA PR )
+        ( DESDE P1 HASTA PF HASTA P5 HASTA P3 )
+        ( DESDE P5 HASTA PR HASTA P1 HASTA P7 )
         ( DESDE P7 HASTA P5 HASTA P8 )
         ( DESDE P8 HASTA P7 HASTA P6 )
         ( DESDE P6 HASTA P8 HASTA PR )
-        ( DESDE PR HASTA P6 HASTA P5 )
+        ( DESDE PR HASTA P5 HASTA P6 )
 
 ;; Aquí se representan las maletas y sus pesos:
 
@@ -98,9 +98,11 @@
 	( bind ?n ( nth$ ( + ?indice 1 ) ?hecho_final ) )
 	;;(printout t "Nivel=" ?n crlf)
 
-    ( bind ?mensaje ( create$ ) )
+    ;; ( bind ?mensaje ( create$ ) )
+    ;; ( bind ?salto_de_linea ( format nil "%n") )
 
     ( bind ?salto_de_linea ( format nil "%n") )
+    ( bind ?mensaje ( create$ ) )
 
     ( bind ?numero ?n )
 
@@ -118,27 +120,32 @@
             ( case ( string-to-field MOVER_M ) then 
                 ( bind ?cadena_accion ( create$ MOVER MAQUINA A) )
                 ( bind ?lugar ( nth$ 3 ?hecho_final ) )
-                ( bind ?mensaje ( create$ ACCION ?numero : ?cadena_accion ( sym-cat ?lugar ?salto_de_linea ) ?mensaje ) )
+                ( bind ?numero_accion ( sym-cat ( format nil "ACCION %.2d" ?numero ) ) )
+                ( bind ?mensaje ( create$ ?numero_accion : ?cadena_accion ( sym-cat ?lugar ?salto_de_linea ) ?mensaje ) )
             )
             ( case ( string-to-field +_VAGON ) then
                 ( bind ?cadena_accion ( create$ ENGANCHAR VAGON EN) )
                 ( bind ?lugar ( nth$ 3 ?hecho_final ) )
-                ( bind ?mensaje ( create$ ACCION ?numero : ?cadena_accion ( sym-cat ?lugar ?salto_de_linea ) ?mensaje ) )
+                ( bind ?numero_accion ( sym-cat ( format nil "ACCION %.2d" ?numero ) ) )
+                ( bind ?mensaje ( create$ ?numero_accion : ?cadena_accion ( sym-cat ?lugar ?salto_de_linea ) ?mensaje ) )
             )
             ( case ( string-to-field -_VAGON ) then
                 ( bind ?cadena_accion ( create$ DESENGANCHAR VAGON EN) )
                 ( bind ?lugar ( nth$ 3 ?hecho_final ) )
-                ( bind ?mensaje ( create$ ACCION ?numero : ?cadena_accion ( sym-cat ?lugar ?salto_de_linea ) ?mensaje ) )
+                ( bind ?numero_accion ( sym-cat ( format nil "ACCION %.2d" ?numero ) ) )
+                ( bind ?mensaje ( create$ ?numero_accion : ?cadena_accion ( sym-cat ?lugar ?salto_de_linea ) ?mensaje ) )
             )
             ( case ( string-to-field +EQUIPL ) then
                 ( bind ?cadena_accion ( create$ RECOGER_MALETA EN) )
                 ( bind ?lugar ( nth$ 3 ?hecho_final ) )
-                ( bind ?mensaje ( create$ ACCION ?numero : ?cadena_accion ( sym-cat ?lugar ?salto_de_linea ) ?mensaje ) )
+                ( bind ?numero_accion ( sym-cat ( format nil "ACCION %.2d" ?numero ) ) )
+                ( bind ?mensaje ( create$ ?numero_accion : ?cadena_accion ( sym-cat ?lugar ?salto_de_linea ) ?mensaje ) )
             )
             ( case ( string-to-field -EQUIPL ) then
                 ( bind ?cadena_accion ( create$ DEJAR_MALETA EN) )
                 ( bind ?lugar ( nth$ 3 ?hecho_final ) )
-                ( bind ?mensaje ( create$ ACCION ?numero : ?cadena_accion ( sym-cat ?lugar ?salto_de_linea ) ?mensaje ) )
+                ( bind ?numero_accion ( sym-cat ( format nil "ACCION %.2d" ?numero ) ) )
+                ( bind ?mensaje ( create$ ?numero_accion : ?cadena_accion ( sym-cat ?lugar ?salto_de_linea ) ?mensaje ) )
             )
         )
 
@@ -147,10 +154,11 @@
 ;;      ( printout t ?hecho_final crlf )
     )
 
-    ( bind ?accion ( nth$ 1 ?hecho_final ) )
+    ; ( bind ?accion ( nth$ 1 ?hecho_final ) )
 
-    ( bind ?hecho_final_padre ( nth$ ( length$ ?hecho_final )  ?hecho_final ) )
+    ; ( bind ?hecho_final_padre ( nth$ ( length$ ?hecho_final )  ?hecho_final ) )
 
+    ( bind ?mensaje ( create$ ( sym-cat ?salto_de_linea ) ?mensaje ) )
 
     ( printout t ?mensaje ?salto_de_linea ?salto_de_linea crlf )
 )
@@ -355,9 +363,13 @@
 ;; subsetp devuelve true o false al comparar dos variables multievaluadas, por eso el uso del explode$
         ( test ( not ( subsetp (create$ MA ) $?vagones ) ) )
     =>
+
+        ( camino ?hecho )
+
         ( printout t "SOLUCION ENCONTRADA EN EL NIVEL " ?nivel crlf )
         ( printout t "NUMERO DE NODOS EXPANDIDOS O REGLAS DISPARADAS " ?*nodosGenerados* crlf )
         ( printout t "HECHO OBJETIVO " ?hecho crlf )
-        ( camino ?hecho )
+        ( printout t crlf )
+
         ( halt )
     )
