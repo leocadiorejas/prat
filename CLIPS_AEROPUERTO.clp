@@ -82,6 +82,80 @@
 
     )
 
+(   deffunction camino (?hecho)
+
+    ;; (ACCION -_VAGON MAQUINA PR ANT P5 VAGONES V1 POS P4 ANT P4 VAGON V2 POS PR ANR PR MALETAS ESTADO NIVEL 27 PADRE <Fact-51160>)
+
+    ;; Almacena el hecho identificado con ?hecho en ?hecho_final
+	( bind ?hecho_final ( fact-slot-value ?hecho implied ) )
+;;  ( printout t ?hecho_final crlf )
+
+
+    ;; Obtiene el indice de la palabra nivel dentro del hecho ?f almacenado en lista
+    ( bind ?indice ( member$ NIVEL ?hecho_final ) )
+
+    ;; Suma uno al indice obtenido para obtener el valor del nivel en el hecho almacenado en ?f y lo guarda en ?n
+	( bind ?n ( nth$ ( + ?indice 1 ) ?hecho_final ) )
+	;;(printout t "Nivel=" ?n crlf)
+
+    ( bind ?mensaje ( create$ ) )
+
+    ( bind ?salto_de_linea ( format nil "%n") )
+
+    ( bind ?numero ?n )
+
+    ( loop-for-count ( - ?n 0 )
+
+        ;; Obtiene la accion realizada
+        ( bind ?accion ( nth$ 1 ?hecho_final ) )
+
+        ( bind ?hecho_final_padre ( nth$ ( length$ ?hecho_final )  ?hecho_final ) )
+;;      ( printout t ?hecho_final_padre crlf )
+
+    ;; (ACCION -_VAGON MAQUINA PR ANT P5 VAGONES V1 POS P4 ANT P4 VAGON V2 POS PR ANR PR MALETAS ESTADO NIVEL 27 PADRE <Fact-51160>)
+
+        ( switch ?accion
+            ( case ( string-to-field MOVER_M ) then 
+                ( bind ?cadena_accion ( create$ MOVER MAQUINA A) )
+                ( bind ?lugar ( nth$ 3 ?hecho_final ) )
+                ( bind ?mensaje ( create$ ACCION ?numero : ?cadena_accion ( sym-cat ?lugar ?salto_de_linea ) ?mensaje ) )
+            )
+            ( case ( string-to-field +_VAGON ) then
+                ( bind ?cadena_accion ( create$ ENGANCHAR VAGON EN) )
+                ( bind ?lugar ( nth$ 3 ?hecho_final ) )
+                ( bind ?mensaje ( create$ ACCION ?numero : ?cadena_accion ( sym-cat ?lugar ?salto_de_linea ) ?mensaje ) )
+            )
+            ( case ( string-to-field -_VAGON ) then
+                ( bind ?cadena_accion ( create$ DESENGANCHAR VAGON EN) )
+                ( bind ?lugar ( nth$ 3 ?hecho_final ) )
+                ( bind ?mensaje ( create$ ACCION ?numero : ?cadena_accion ( sym-cat ?lugar ?salto_de_linea ) ?mensaje ) )
+            )
+            ( case ( string-to-field +EQUIPL ) then
+                ( bind ?cadena_accion ( create$ RECOGER_MALETA EN) )
+                ( bind ?lugar ( nth$ 3 ?hecho_final ) )
+                ( bind ?mensaje ( create$ ACCION ?numero : ?cadena_accion ( sym-cat ?lugar ?salto_de_linea ) ?mensaje ) )
+            )
+            ( case ( string-to-field -EQUIPL ) then
+                ( bind ?cadena_accion ( create$ DEJAR_MALETA EN) )
+                ( bind ?lugar ( nth$ 3 ?hecho_final ) )
+                ( bind ?mensaje ( create$ ACCION ?numero : ?cadena_accion ( sym-cat ?lugar ?salto_de_linea ) ?mensaje ) )
+            )
+        )
+
+        ( bind ?numero ( - ?numero 1 ) )
+        ( bind ?hecho_final ( fact-slot-value ( fact-index ?hecho_final_padre ) implied ) )
+;;      ( printout t ?hecho_final crlf )
+    )
+
+    ( bind ?accion ( nth$ 1 ?hecho_final ) )
+
+    ( bind ?hecho_final_padre ( nth$ ( length$ ?hecho_final )  ?hecho_final ) )
+
+
+    ( printout t ?mensaje ?salto_de_linea ?salto_de_linea crlf )
+)
+
+
 ;; ===========================================================================================================================
 ;; ===  REGLAS                                                                                                              ==
 ;; ===========================================================================================================================
@@ -123,7 +197,7 @@
 
 		(declare (salience 700))
 
-        ?padre <- ( ACCION ?
+        ?padre <- ( ACCION ?accion
                     MAQUINA  ?localizacion_actual ANT ?localizacion_anterior
                     VAGONES $?vagon_anterior VAGON ?vagon POS ?localizacion_actual ANT ?desenganchado $?vagon_posterior
                     MALETAS $?maletas
@@ -134,7 +208,9 @@
 
         ( test ( neq ?localizacion_actual MA ) )
 
-        ( test ( neq ?localizacion_actual ?desenganchado ) )
+        ( test ( neq ?accion -_VAGON ) )
+
+;;      ( test ( neq ?localizacion_actual ?desenganchado ) )
 
 
 ;; subsetp devuelve true o false al comparar dos variables multievaluadas, por eso el uso del explode$
@@ -164,7 +240,7 @@
 
 		(declare (salience 600))
 
-        ?padre <- ( ACCION ?
+        ?padre <- ( ACCION ?accion
                     MAQUINA  ?localizacion_actual ANT ?localizacion_anterior
                     VAGONES $?vagon_anterior VAGON ?vagon POS MA ANT ?enganchado $?vagon_posterior
                     MALETAS $?maletas
@@ -172,7 +248,10 @@
                     NIVEL ?nivel
                     $? )
         ( test ( < ?nivel ?*profundidad* ) )
-        ( test ( neq ?localizacion_actual ?enganchado ) )
+
+        ( test ( neq ?accion +_VAGON ) )
+
+;;      ( test ( neq ?localizacion_actual ?enganchado ) )
 
 ;; subsetp devuelve true o false al comparar dos variables multievaluadas, por eso el uso del explode$
         ( test ( not ( subsetp (create$ ?vagon ) $?maletas ) ) )
@@ -272,14 +351,13 @@
 	
 		(declare (salience 1000))
 
-        ?padre <- ( ACCION $? VAGONES $?vagones MALETAS ESTADO NIVEL ?nivel $? )
+        ?hecho <- ( ACCION $? VAGONES $?vagones MALETAS ESTADO NIVEL ?nivel $? )
 ;; subsetp devuelve true o false al comparar dos variables multievaluadas, por eso el uso del explode$
         ( test ( not ( subsetp (create$ MA ) $?vagones ) ) )
-
     =>
-
         ( printout t "SOLUCION ENCONTRADA EN EL NIVEL " ?nivel crlf )
         ( printout t "NUMERO DE NODOS EXPANDIDOS O REGLAS DISPARADAS " ?*nodosGenerados* crlf )
-        ( printout t "HECHO OBJETIVO " ?padre crlf )
+        ( printout t "HECHO OBJETIVO " ?hecho crlf )
+        ( camino ?hecho )
         ( halt )
     )
